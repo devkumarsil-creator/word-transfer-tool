@@ -3,65 +3,753 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Word Data Transfer Tool</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #123b68;
+    }
+
+    .description {
+      line-height: 1.6;
+      color: #4b5563;
+    }
+
+    .privacy {
+      padding: 12px;
+      margin: 20px 0;
+      background: #eef6ff;
+      border-left: 4px solid #2563eb;
+      border-radius: 4px;
+      line-height: 1.5;
+    }
+
+    .file-section {
+      margin-top: 24px;
+      padding: 18px;
+      border: 1px solid #d7dee8;
+      border-radius: 8px;
+      background: #fafcff;
+    }
+
+    .file-section h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 28px;
+      padding: 14px 20px;
+      font-size: 17px;
+      font-weight: bold;
+      color: white;
+      background: #1769aa;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #12558b;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    #status {
+      display: none;
+      margin-top: 22px;
+      padding: 14px;
+      border-radius: 6px;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .status-info {
+      display: block !important;
+      background: #eef6ff;
+      border: 1px solid #93c5fd;
+      color: #1e3a5f;
+    }
+
+    .status-success {
+      display: block !important;
+      background: #ecfdf3;
+      border: 1px solid #86efac;
+      color: #166534;
+    }
+
+    .status-error {
+      display: block !important;
+      background: #fff1f2;
+      border: 1px solid #fda4af;
+      color: #9f1239;
+    }
+
+    .note {
+      margin-top: 24px;
+      font-size: 13px;
+      color: #667085;
+      line-height: 1.5;
+    }
+  </style>
 </head>
 
 <body>
 
-  <h1>Word Data Transfer Tool</h1>
+  <main class="container">
 
-  <p>
-    Transfer Result and Verdict data from a filled Word document
-    into the original blank Word template.
-  </p>
+    <h1>Word Data Transfer Tool</h1>
 
-  <hr>
+    <p class="description">
+      Transfer Result and Verdict values from a filled Word document
+      into the corresponding clauses in the original blank Word template.
+    </p>
 
-  <h3>1. Select Blank Word Template</h3>
+    <div class="privacy">
+      <strong>Local processing:</strong>
+      The selected Word documents are processed in this browser.
+      The webpage does not upload the documents to GitHub.
+    </div>
 
-  <input
-    type="file"
-    id="blankFile"
-    accept=".docx"
-  >
+    <section class="file-section">
+      <h2>1. Select Blank Word Template</h2>
 
-  <h3>2. Select Filled Word Document</h3>
+      <input
+        type="file"
+        id="blankFile"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      >
+    </section>
 
-  <input
-    type="file"
-    id="filledFile"
-    accept=".docx"
-  >
+    <section class="file-section">
+      <h2>2. Select Filled Word Document</h2>
 
-  <br><br>
+      <input
+        type="file"
+        id="filledFile"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      >
+    </section>
 
-  <button id="transferButton">
-    Transfer Data
-  </button>
+    <button type="button" id="transferButton">
+      Transfer Data and Download
+    </button>
 
-  <p id="status"></p>
+    <div id="status" role="status" aria-live="polite"></div>
+
+    <p class="note">
+      This first version matches rows using the text in the Clause column.
+      The blank document remains the master document for formatting and layout.
+    </p>
+
+  </main>
 
   <script>
-    document.getElementById("transferButton").addEventListener("click", function () {
+    const WORD_NAMESPACE =
+      "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
-      const blankFile =
-        document.getElementById("blankFile").files[0];
+    const blankFileInput =
+      document.getElementById("blankFile");
 
-      const filledFile =
-        document.getElementById("filledFile").files[0];
+    const filledFileInput =
+      document.getElementById("filledFile");
 
-      const status =
-        document.getElementById("status");
+    const transferButton =
+      document.getElementById("transferButton");
 
-      if (!blankFile || !filledFile) {
-        status.textContent =
-          "Please select both Word documents.";
-        return;
+    const statusBox =
+      document.getElementById("status");
+
+
+    function showStatus(message, type) {
+      statusBox.textContent = message;
+      statusBox.className = "";
+
+      if (type === "success") {
+        statusBox.classList.add("status-success");
+      } else if (type === "error") {
+        statusBox.classList.add("status-error");
+      } else {
+        statusBox.classList.add("status-info");
+      }
+    }
+
+
+    function normalizeText(value) {
+      return String(value || "")
+        .replace(/\u00A0/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+
+    function normalizeClause(value) {
+      return normalizeText(value)
+        .replace(/\{[^}]*\}/g, "")
+        .replace(/\s+/g, "")
+        .replace(/[.:;]+$/g, "");
+    }
+
+
+    function getCellText(cell) {
+      const textNodes =
+        Array.from(cell.getElementsByTagNameNS(WORD_NAMESPACE, "t"));
+
+      return normalizeText(
+        textNodes.map(node => node.textContent || "").join("")
+      );
+    }
+
+
+    function getLogicalCells(row) {
+      const physicalCells =
+        Array.from(row.children).filter(
+          element =>
+            element.namespaceURI === WORD_NAMESPACE &&
+            element.localName === "tc"
+        );
+
+      const logicalCells = [];
+      let logicalColumn = 0;
+
+      for (const cell of physicalCells) {
+        let span = 1;
+
+        const spanElements =
+          cell.getElementsByTagNameNS(WORD_NAMESPACE, "gridSpan");
+
+        if (spanElements.length > 0) {
+          const value =
+            spanElements[0].getAttributeNS(WORD_NAMESPACE, "val") ||
+            spanElements[0].getAttribute("w:val") ||
+            spanElements[0].getAttribute("val");
+
+          const parsedSpan = parseInt(value, 10);
+
+          if (Number.isInteger(parsedSpan) && parsedSpan > 0) {
+            span = parsedSpan;
+          }
+        }
+
+        logicalCells.push({
+          cell: cell,
+          startColumn: logicalColumn,
+          span: span,
+          text: getCellText(cell)
+        });
+
+        logicalColumn += span;
       }
 
-      status.textContent =
-        "Both Word documents selected successfully.";
-    });
+      return logicalCells;
+    }
+
+
+    function findCellCoveringColumn(logicalCells, columnNumber) {
+      return logicalCells.find(item =>
+        columnNumber >= item.startColumn &&
+        columnNumber < item.startColumn + item.span
+      );
+    }
+
+
+    function isClauseValue(value) {
+      const clause = normalizeClause(value);
+
+      if (!clause) {
+        return false;
+      }
+
+      if (clause.toLowerCase() === "clause") {
+        return false;
+      }
+
+      return /^[A-Za-z]?\d+(?:[.\-]\d+)*[A-Za-z]?$/.test(clause);
+    }
+
+
+    function extractRows(documentXml) {
+      const rows =
+        Array.from(documentXml.getElementsByTagNameNS(
+          WORD_NAMESPACE,
+          "tr"
+        ));
+
+      const extracted = [];
+
+      for (const row of rows) {
+        const logicalCells = getLogicalCells(row);
+
+        if (logicalCells.length === 0) {
+          continue;
+        }
+
+        const clauseCell =
+          findCellCoveringColumn(logicalCells, 0);
+
+        if (!clauseCell) {
+          continue;
+        }
+
+        const clause =
+          normalizeClause(clauseCell.text);
+
+        if (!isClauseValue(clause)) {
+          continue;
+        }
+
+        const resultCell =
+          findCellCoveringColumn(logicalCells, 2);
+
+        const verdictCell =
+          findCellCoveringColumn(logicalCells, 3);
+
+        extracted.push({
+          clause: clause,
+          row: row,
+          logicalCells: logicalCells,
+          resultCell: resultCell,
+          verdictCell: verdictCell,
+          result: resultCell ? normalizeText(resultCell.text) : "",
+          verdict: verdictCell ? normalizeText(verdictCell.text) : ""
+        });
+      }
+
+      return extracted;
+    }
+
+
+    function clearCellContent(cell) {
+      const paragraphs =
+        Array.from(cell.children).filter(
+          element =>
+            element.namespaceURI === WORD_NAMESPACE &&
+            element.localName === "p"
+        );
+
+      let paragraph;
+
+      if (paragraphs.length > 0) {
+        paragraph = paragraphs[0];
+
+        for (const existingParagraph of paragraphs) {
+          if (existingParagraph !== paragraph) {
+            existingParagraph.remove();
+          }
+        }
+      } else {
+        paragraph =
+          cell.ownerDocument.createElementNS(
+            WORD_NAMESPACE,
+            "w:p"
+          );
+
+        cell.appendChild(paragraph);
+      }
+
+      const paragraphProperties =
+        Array.from(paragraph.children).find(
+          element =>
+            element.namespaceURI === WORD_NAMESPACE &&
+            element.localName === "pPr"
+        );
+
+      for (const child of Array.from(paragraph.children)) {
+        if (child !== paragraphProperties) {
+          child.remove();
+        }
+      }
+
+      return paragraph;
+    }
+
+
+    function setCellText(cell, newValue) {
+      if (!cell) {
+        return false;
+      }
+
+      const cleanValue =
+        normalizeText(newValue);
+
+      const existingTextNodes =
+        Array.from(cell.getElementsByTagNameNS(
+          WORD_NAMESPACE,
+          "t"
+        ));
+
+      if (existingTextNodes.length > 0) {
+        existingTextNodes cleanValue;
+
+        if (
+          cleanValue.startsWith(" ") ||
+          cleanValue.endsWith(" ")
+        ) {
+          existingTextNodes[0].setAttribute(
+            "xml:space",
+            "preserve"
+          );
+        }
+
+        for (
+          let index = 1;
+          index < existingTextNodes.length;
+          index++
+        ) {
+          existingTextNodes[index].textContent = "";
+        }
+
+        return true;
+      }
+
+      const paragraph =
+        clearCellContent(cell);
+
+      const run =
+        cell.ownerDocument.createElementNS(
+          WORD_NAMESPACE,
+          "w:r"
+        );
+
+      const text =
+        cell.ownerDocument.createElementNS(
+          WORD_NAMESPACE,
+          "w:t"
+        );
+
+      text.textContent = cleanValue;
+
+      if (
+        cleanValue.startsWith(" ") ||
+        cleanValue.endsWith(" ")
+      ) {
+        text.setAttribute("xml:space", "preserve");
+      }
+
+      run.appendChild(text);
+      paragraph.appendChild(run);
+
+      return true;
+    }
+
+
+    function shouldPreserveTargetVerdict(targetVerdict) {
+      const text =
+        normalizeText(targetVerdict);
+
+      return text === "-" ||
+             text === "–" ||
+             text === "—";
+    }
+
+
+    async function loadWordDocument(file) {
+      const fileBuffer =
+        await file.arrayBuffer();
+
+      const zip =
+        await JSZip.loadAsync(fileBuffer);
+
+      const documentFile =
+        zip.file("word/document.xml");
+
+      if (!documentFile) {
+        throw new Error(
+          "The selected file does not contain word/document.xml."
+        );
+      }
+
+      const xmlText =
+        await documentFile.async("string");
+
+      const parser =
+        new DOMParser();
+
+      const xmlDocument =
+        parser.parseFromString(
+          xmlText,
+          "application/xml"
+        );
+
+      const parserError =
+        xmlDocument.getElementsByTagName("parsererror");
+
+      if (parserError.length > 0) {
+        throw new Error(
+          "The Word document XML could not be read."
+        );
+      }
+
+      return {
+        zip: zip,
+        xmlDocument: xmlDocument
+      };
+    }
+
+
+    function downloadFile(blob, fileName) {
+      const objectUrl =
+        URL.createObjectURL(blob);
+
+      const link =
+        document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = fileName;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      URL.revokeObjectURL(objectUrl);
+    }
+
+
+    transferButton.addEventListener(
+      "click",
+      async function () {
+
+        const blankFile =
+          blankFileInput.files[0];
+
+        const filledFile =
+          filledFileInput.files[0];
+
+        if (!blankFile || !filledFile) {
+          showStatus(
+            "Please select both the blank DOCX and the filled DOCX.",
+            "error"
+          );
+          return;
+        }
+
+        if (
+          !blankFile.name.toLowerCase().endsWith(".docx") ||
+          !filledFile.name.toLowerCase().endsWith(".docx")
+        ) {
+          showStatus(
+            "Only .docx Word documents are supported.",
+            "error"
+          );
+          return;
+        }
+
+        transferButton.disabled = true;
+
+        showStatus(
+          "Reading the two Word documents...",
+          "info"
+        );
+
+        try {
+          const blankDocument =
+            await loadWordDocument(blankFile);
+
+          const filledDocument =
+            await loadWordDocument(filledFile);
+
+          const blankRows =
+            extractRows(blankDocument.xmlDocument);
+
+          const filledRows =
+            extractRows(filledDocument.xmlDocument);
+
+          if (blankRows.length === 0) {
+            throw new Error(
+              "No clause rows were found in the blank document."
+            );
+          }
+
+          if (filledRows.length === 0) {
+            throw new Error(
+              "No clause rows were found in the filled document."
+            );
+          }
+
+          const filledByClause =
+            new Map();
+
+          for (const row of filledRows) {
+            filledByClause.set(row.clause, row);
+          }
+
+          let matchedClauses = 0;
+          let resultValuesCopied = 0;
+          let verdictValuesCopied = 0;
+          let preservedVerdicts = 0;
+
+          const unmatchedClauses = [];
+
+          for (const targetRow of blankRows) {
+            const sourceRow =
+              filledByClause.get(targetRow.clause);
+
+            if (!sourceRow) {
+              unmatchedClauses.push(targetRow.clause);
+              continue;
+            }
+
+            matchedClauses++;
+
+            const targetResultCell =
+              targetRow.resultCell;
+
+            const targetVerdictCell =
+              targetRow.verdictCell;
+
+            const resultCanBeWritten =
+              targetResultCell &&
+              targetResultCell.startColumn === 2 &&
+              targetResultCell.span === 1;
+
+            const verdictCanBeWritten =
+              targetVerdictCell &&
+              targetVerdictCell.startColumn === 3;
+
+            if (
+              resultCanBeWritten &&
+              sourceRow.result !== ""
+            ) {
+              setCellText(
+                targetResultCell.cell,
+                sourceRow.result
+              );
+
+              resultValuesCopied++;
+            }
+
+            if (
+              verdictCanBeWritten &&
+              sourceRow.verdict !== ""
+            ) {
+              if (
+                shouldPreserveTargetVerdict(
+                  targetRow.verdict
+                )
+              ) {
+                preservedVerdicts++;
+              } else {
+                setCellText(
+                  targetVerdictCell.cell,
+                  sourceRow.verdict
+                );
+
+                verdictValuesCopied++;
+              }
+            }
+          }
+
+          const serializer =
+            new XMLSerializer();
+
+          const updatedXml =
+            serializer.serializeToString(
+              blankDocument.xmlDocument
+            );
+
+          blankDocument.zip.file(
+            "word/document.xml",
+            updatedXml
+          );
+
+          showStatus(
+            "Creating the completed Word document...",
+            "info"
+          );
+
+          const completedDocument =
+            await blankDocument.zip.generateAsync({
+              type: "blob",
+              mimeType:
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              compression: "DEFLATE",
+              compressionOptions: {
+                level: 6
+              }
+            });
+
+          const originalName =
+            blankFile.name.replace(/\.docx$/i, "");
+
+          const outputName =
+            originalName + "_completed.docx";
+
+          downloadFile(
+            completedDocument,
+            outputName
+          );
+
+          let summary =
+            "Transfer completed successfully.\n\n" +
+            "Matched clauses: " + matchedClauses + "\n" +
+            "Result values copied: " + resultValuesCopied + "\n" +
+            "Verdict values copied: " + verdictValuesCopied + "\n" +
+            "Existing dash verdicts preserved: " +
+            preservedVerdicts;
+
+          if (unmatchedClauses.length > 0) {
+            summary +=
+              "\n\nClauses not found in filled document: " +
+              unmatchedClauses.join(", ");
+          }
+
+          summary +=
+            "\n\nDownloaded file: " + outputName;
+
+          showStatus(
+            summary,
+            "success"
+          );
+
+        } catch (error) {
+          console.error(error);
+
+          showStatus(
+            "Transfer failed: " +
+            (error.message || String(error)),
+            "error"
+          );
+
+        } finally {
+          transferButton.disabled = false;
+        }
+      }
+    );
   </script>
 
 </body>
