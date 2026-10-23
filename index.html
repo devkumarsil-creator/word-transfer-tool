@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Data Transfer Tool</title>
+</head>
+
+<body>
+
+  <h1>Word Data Transfer Tool</h1>
+
+  <p>
+    Transfer Result and Verdict data from a filled Word document
+    into the original blank Word template.
+  </p>
+
+  <hr>
+
+  <h3>1. Select Blank Word Template</h3>
+
+  <input
+    type="file"
+    id="blankFile"
+    accept=".docx"
+  >
+
+  <h3>2. Select Filled Word Document</h3>
+
+  <input
+    type="file"
+    id="filledFile"
+    accept=".docx"
+  >
+
+  <br><br>
+
+  <button id="transferButton">
+    Transfer Data
+  </button>
+
+  <p id="status"></p>
+
+  <script>
+    document.getElementById("transferButton").addEventListener("click", function () {
+
+      const blankFile =
+        document.getElementById("blankFile").files[0];
+
+      const filledFile =
+        document.getElementById("filledFile").files[0];
+
+      const status =
+        document.getElementById("status");
+
+      if (!blankFile || !filledFile) {
+        status.textContent =
+          "Please select both Word documents.";
+        return;
+      }
+
+      status.textContent =
+        "Both Word documents selected successfully.";
+    });
+  </script>
+
+</body>
+</html>
