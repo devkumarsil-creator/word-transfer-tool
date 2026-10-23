@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Word Data Transfer Tool</title>
+  <title>Word Data Transfer Tool - Version 3</title>
 
+  <!-- JSZip is used to read/write the DOCX package in the browser -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <style>
@@ -15,116 +16,153 @@
 
     body {
       margin: 0;
-      padding: 24px;
+      padding: 30px;
       font-family: Arial, Helvetica, sans-serif;
-      background: #f4f7fb;
-      color: #1f2937;
+      background: #f3f6fa;
+      color: #172033;
     }
 
     .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      padding: 32px;
-      border-radius: 12px;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
+      max-width: 900px;
+      margin: auto;
+      background: #ffffff;
+      padding: 38px;
+      border-radius: 14px;
+      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.10);
     }
 
     h1 {
       margin-top: 0;
-      color: #123b68;
+      margin-bottom: 8px;
+      color: #06477f;
+      font-size: 36px;
+    }
+
+    .version {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 24px;
     }
 
     .description {
-      line-height: 1.6;
-      color: #4b5563;
+      color: #475569;
+      line-height: 1.7;
+      font-size: 17px;
     }
 
     .privacy {
-      padding: 12px;
-      margin: 20px 0;
-      background: #eef6ff;
-      border-left: 4px solid #2563eb;
-      border-radius: 4px;
-      line-height: 1.5;
+      background: #edf6ff;
+      border-left: 5px solid #2563eb;
+      padding: 16px;
+      margin: 24px 0;
+      border-radius: 6px;
+      line-height: 1.6;
     }
 
-    .file-section {
-      margin-top: 24px;
-      padding: 18px;
-      border: 1px solid #d7dee8;
-      border-radius: 8px;
+    .file-box {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 22px;
+      margin: 20px 0;
       background: #fafcff;
     }
 
-    .file-section h2 {
+    .file-box h2 {
       margin-top: 0;
-      font-size: 18px;
+      font-size: 20px;
     }
 
     input[type="file"] {
-      display: block;
+      margin-top: 8px;
       width: 100%;
-      margin-top: 12px;
+      font-size: 15px;
     }
 
-    button {
+    .primary-button {
+      display: block;
       width: 100%;
-      margin-top: 28px;
-      padding: 14px 20px;
-      font-size: 17px;
-      font-weight: bold;
-      color: white;
-      background: #1769aa;
       border: none;
-      border-radius: 8px;
+      border-radius: 9px;
+      padding: 16px;
+      margin-top: 26px;
+      background: #1473b9;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
       cursor: pointer;
     }
 
-    button:hover {
-      background: #12558b;
+    .primary-button:hover {
+      background: #0e5d98;
     }
 
-    button:disabled {
+    .primary-button:disabled {
       background: #94a3b8;
       cursor: not-allowed;
+    }
+
+    .download-button {
+      display: none;
+      width: 100%;
+      border: none;
+      border-radius: 9px;
+      padding: 16px;
+      margin-top: 16px;
+      background: #16803c;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .download-button:hover {
+      background: #116630;
     }
 
     #status {
       display: none;
       margin-top: 22px;
-      padding: 14px;
-      border-radius: 6px;
-      line-height: 1.6;
+      padding: 18px;
+      border-radius: 8px;
+      line-height: 1.7;
       white-space: pre-line;
     }
 
-    .status-info {
+    .info {
       display: block !important;
-      background: #eef6ff;
+      background: #eff6ff;
       border: 1px solid #93c5fd;
       color: #1e3a5f;
     }
 
-    .status-success {
+    .success {
       display: block !important;
       background: #ecfdf3;
       border: 1px solid #86efac;
       color: #166534;
     }
 
-    .status-error {
+    .error {
       display: block !important;
       background: #fff1f2;
       border: 1px solid #fda4af;
       color: #9f1239;
     }
 
-    .note {
-      margin-top: 24px;
+    .warning {
+      display: block !important;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #854d0e;
+    }
+
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
       font-size: 13px;
-      color: #667085;
-      line-height: 1.5;
+      line-height: 1.6;
     }
   </style>
 </head>
@@ -135,82 +173,117 @@
 
     <h1>Word Data Transfer Tool</h1>
 
+    <div class="version">
+      Version 3
+    </div>
+
     <p class="description">
       Transfer Result and Verdict values from a filled Word document
-      into the corresponding clauses in the original blank Word template.
+      into matching clauses in the original blank Word template.
     </p>
 
     <div class="privacy">
-      <strong>Local processing:</strong>
-      The selected Word documents are processed in this browser.
-      The webpage does not upload the documents to GitHub.
+      <strong>Local processing</strong><br>
+      The selected Word documents are processed within this browser.
+      The files themselves are not uploaded to this GitHub repository.
     </div>
 
-    <section class="file-section">
+    <div class="file-box">
       <h2>1. Select Blank Word Template</h2>
 
       <input
         type="file"
         id="blankFile"
-        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        accept=".docx"
       >
-    </section>
+    </div>
 
-    <section class="file-section">
+    <div class="file-box">
       <h2>2. Select Filled Word Document</h2>
 
       <input
         type="file"
         id="filledFile"
-        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        accept=".docx"
       >
-    </section>
+    </div>
 
-    <button type="button" id="transferButton">
-      Transfer Data and Download
+    <button
+      type="button"
+      id="transferButton"
+      class="primary-button">
+      Transfer Data
     </button>
 
-    <div id="status" role="status" aria-live="polite"></div>
+    <button
+      type="button"
+      id="downloadButton"
+      class="download-button">
+      Download Completed Word File
+    </button>
 
-    <p class="note">
-      This first version matches rows using the text in the Clause column.
-      The blank document remains the master document for formatting and layout.
-    </p>
+    <div
+      id="status"
+      role="status"
+      aria-live="polite">
+    </div>
+
+    <div class="footer">
+      The blank Word document is used as the master document.
+      Version 3 changes Result and Verdict values in matching Clause rows.
+    </div>
 
   </main>
 
+
   <script>
-    const WORD_NAMESPACE =
+
+    const WORD_NS =
       "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 
-    const blankFileInput =
+    const blankInput =
       document.getElementById("blankFile");
 
-    const filledFileInput =
+    const filledInput =
       document.getElementById("filledFile");
 
     const transferButton =
       document.getElementById("transferButton");
 
+    const downloadButton =
+      document.getElementById("downloadButton");
+
     const statusBox =
       document.getElementById("status");
 
 
+    let completedBlob = null;
+    let completedFileName = "";
+
+
     function showStatus(message, type) {
+
       statusBox.textContent = message;
+
       statusBox.className = "";
 
       if (type === "success") {
-        statusBox.classList.add("status-success");
-      } else if (type === "error") {
-        statusBox.classList.add("status-error");
-      } else {
-        statusBox.classList.add("status-info");
+        statusBox.classList.add("success");
+      }
+      else if (type === "error") {
+        statusBox.classList.add("error");
+      }
+      else if (type === "warning") {
+        statusBox.classList.add("warning");
+      }
+      else {
+        statusBox.classList.add("info");
       }
     }
 
 
-    function normalizeText(value) {
+    function cleanText(value) {
+
       return String(value || "")
         .replace(/\u00A0/g, " ")
         .replace(/\s+/g, " ")
@@ -218,8 +291,9 @@
     }
 
 
-    function normalizeClause(value) {
-      return normalizeText(value)
+    function cleanClause(value) {
+
+      return cleanText(value)
         .replace(/\{[^}]*\}/g, "")
         .replace(/\s+/g, "")
         .replace(/[.:;]+$/g, "");
@@ -227,316 +301,404 @@
 
 
     function getCellText(cell) {
-      const textNodes =
-        Array.from(cell.getElementsByTagNameNS(WORD_NAMESPACE, "t"));
 
-      return normalizeText(
-        textNodes.map(node => node.textContent || "").join("")
+      if (!cell) {
+        return "";
+      }
+
+      const nodes =
+        Array.from(
+          cell.getElementsByTagNameNS(
+            WORD_NS,
+            "t"
+          )
+        );
+
+      return cleanText(
+        nodes
+          .map(node => node.textContent || "")
+          .join("")
       );
     }
 
 
-    function getLogicalCells(row) {
-      const physicalCells =
-        Array.from(row.children).filter(
-          element =>
-            element.namespaceURI === WORD_NAMESPACE &&
-            element.localName === "tc"
+    function getGridSpan(cell) {
+
+      const spanNodes =
+        cell.getElementsByTagNameNS(
+          WORD_NS,
+          "gridSpan"
         );
 
+      if (spanNodes.length === 0) {
+        return 1;
+      }
+
+      const spanNode =
+        spanNodes[0];
+
+      const rawValue =
+        spanNode.getAttributeNS(
+          WORD_NS,
+          "val"
+        ) ||
+        spanNode.getAttribute("w:val") ||
+        spanNode.getAttribute("val");
+
+      const span =
+        parseInt(rawValue, 10);
+
+      if (
+        Number.isInteger(span) &&
+        span > 0
+      ) {
+        return span;
+      }
+
+      return 1;
+    }
+
+
+    function getLogicalCells(row) {
+
+      const physicalCells =
+        Array.from(row.children)
+          .filter(element =>
+            element.namespaceURI === WORD_NS &&
+            element.localName === "tc"
+          );
+
       const logicalCells = [];
-      let logicalColumn = 0;
+
+      let currentColumn = 0;
 
       for (const cell of physicalCells) {
-        let span = 1;
 
-        const spanElements =
-          cell.getElementsByTagNameNS(WORD_NAMESPACE, "gridSpan");
-
-        if (spanElements.length > 0) {
-          const value =
-            spanElements[0].getAttributeNS(WORD_NAMESPACE, "val") ||
-            spanElements[0].getAttribute("w:val") ||
-            spanElements[0].getAttribute("val");
-
-          const parsedSpan = parseInt(value, 10);
-
-          if (Number.isInteger(parsedSpan) && parsedSpan > 0) {
-            span = parsedSpan;
-          }
-        }
+        const span =
+          getGridSpan(cell);
 
         logicalCells.push({
           cell: cell,
-          startColumn: logicalColumn,
+          start: currentColumn,
           span: span,
           text: getCellText(cell)
         });
 
-        logicalColumn += span;
+        currentColumn += span;
       }
 
       return logicalCells;
     }
 
 
-    function findCellCoveringColumn(logicalCells, columnNumber) {
-      return logicalCells.find(item =>
-        columnNumber >= item.startColumn &&
-        columnNumber < item.startColumn + item.span
+    function cellForColumn(cells, column) {
+
+      return cells.find(item =>
+        column >= item.start &&
+        column < item.start + item.span
       );
     }
 
 
-    function isClauseValue(value) {
-      const clause = normalizeClause(value);
+    function looksLikeClause(value) {
+
+      const clause =
+        cleanClause(value);
 
       if (!clause) {
         return false;
       }
 
-      if (clause.toLowerCase() === "clause") {
+      if (
+        clause.toLowerCase() === "clause"
+      ) {
         return false;
       }
 
-      return /^[A-Za-z]?\d+(?:[.\-]\d+)*[A-Za-z]?$/.test(clause);
+      return /^[A-Za-z]?\d+(?:[.\-]\d+)*[A-Za-z]?$/
+        .test(clause);
     }
 
 
-    function extractRows(documentXml) {
-      const rows =
-        Array.from(documentXml.getElementsByTagNameNS(
-          WORD_NAMESPACE,
-          "tr"
-        ));
+    function extractClauseRows(xmlDocument) {
 
-      const extracted = [];
+      const wordRows =
+        Array.from(
+          xmlDocument.getElementsByTagNameNS(
+            WORD_NS,
+            "tr"
+          )
+        );
 
-      for (const row of rows) {
-        const logicalCells = getLogicalCells(row);
+      const output = [];
 
-        if (logicalCells.length === 0) {
+      for (const row of wordRows) {
+
+        const cells =
+          getLogicalCells(row);
+
+        if (!cells.length) {
           continue;
         }
 
         const clauseCell =
-          findCellCoveringColumn(logicalCells, 0);
+          cellForColumn(
+            cells,
+            0
+          );
 
         if (!clauseCell) {
           continue;
         }
 
         const clause =
-          normalizeClause(clauseCell.text);
+          cleanClause(
+            clauseCell.text
+          );
 
-        if (!isClauseValue(clause)) {
+        if (!looksLikeClause(clause)) {
           continue;
         }
 
         const resultCell =
-          findCellCoveringColumn(logicalCells, 2);
+          cellForColumn(
+            cells,
+            2
+          );
 
         const verdictCell =
-          findCellCoveringColumn(logicalCells, 3);
+          cellForColumn(
+            cells,
+            3
+          );
 
-        extracted.push({
+        output.push({
+
           clause: clause,
-          row: row,
-          logicalCells: logicalCells,
+
           resultCell: resultCell,
+
           verdictCell: verdictCell,
-          result: resultCell ? normalizeText(resultCell.text) : "",
-          verdict: verdictCell ? normalizeText(verdictCell.text) : ""
+
+          result:
+            resultCell
+              ? cleanText(resultCell.text)
+              : "",
+
+          verdict:
+            verdictCell
+              ? cleanText(verdictCell.text)
+              : ""
         });
       }
 
-      return extracted;
+      return output;
     }
 
 
-    function clearCellContent(cell) {
-      const paragraphs =
-        Array.from(cell.children).filter(
-          element =>
-            element.namespaceURI === WORD_NAMESPACE &&
-            element.localName === "p"
-        );
+    function writeTextToCell(cell, value) {
 
-      let paragraph;
-
-      if (paragraphs.length > 0) {
-        paragraph = paragraphs[0];
-
-        for (const existingParagraph of paragraphs) {
-          if (existingParagraph !== paragraph) {
-            existingParagraph.remove();
-          }
-        }
-      } else {
-        paragraph =
-          cell.ownerDocument.createElementNS(
-            WORD_NAMESPACE,
-            "w:p"
-          );
-
-        cell.appendChild(paragraph);
-      }
-
-      const paragraphProperties =
-        Array.from(paragraph.children).find(
-          element =>
-            element.namespaceURI === WORD_NAMESPACE &&
-            element.localName === "pPr"
-        );
-
-      for (const child of Array.from(paragraph.children)) {
-        if (child !== paragraphProperties) {
-          child.remove();
-        }
-      }
-
-      return paragraph;
-    }
-
-
-    function setCellText(cell, newValue) {
       if (!cell) {
         return false;
       }
 
-      const cleanValue =
-        normalizeText(newValue);
+      const textValue =
+        cleanText(value);
 
-      const existingTextNodes =
-        Array.from(cell.getElementsByTagNameNS(
-          WORD_NAMESPACE,
-          "t"
-        ));
+      const textNodes =
+        Array.from(
+          cell.getElementsByTagNameNS(
+            WORD_NS,
+            "t"
+          )
+        );
 
-      if (existingTextNodes.length > 0) {
-        existingTextNodes cleanValue;
+      /*
+       * Preferred case:
+       * Keep the existing cell/run formatting
+       * and only change its text.
+       */
 
-        if (
-          cleanValue.startsWith(" ") ||
-          cleanValue.endsWith(" ")
-        ) {
-          existingTextNodes[0].setAttribute(
-            "xml:space",
-            "preserve"
-          );
-        }
+      if (textNodes.length > 0) {
+
+        textNodes[0].textContent =
+          textValue;
 
         for (
-          let index = 1;
-          index < existingTextNodes.length;
-          index++
+          let i = 1;
+          i < textNodes.length;
+          i++
         ) {
-          existingTextNodes[index].textContent = "";
+          textNodes[i].textContent = "";
         }
 
         return true;
       }
 
-      const paragraph =
-        clearCellContent(cell);
 
-      const run =
-        cell.ownerDocument.createElementNS(
-          WORD_NAMESPACE,
-          "w:r"
-        );
+      /*
+       * Blank cells may not contain a text run.
+       * Reuse the first existing paragraph where possible.
+       */
 
-      const text =
-        cell.ownerDocument.createElementNS(
-          WORD_NAMESPACE,
-          "w:t"
-        );
+      let paragraph = null;
 
-      text.textContent = cleanValue;
+      const directParagraphs =
+        Array.from(cell.children)
+          .filter(element =>
+            element.namespaceURI === WORD_NS &&
+            element.localName === "p"
+          );
 
-      if (
-        cleanValue.startsWith(" ") ||
-        cleanValue.endsWith(" ")
-      ) {
-        text.setAttribute("xml:space", "preserve");
+      if (directParagraphs.length > 0) {
+
+        paragraph =
+          directParagraphs[0];
+
+      }
+      else {
+
+        paragraph =
+          cell.ownerDocument
+            .createElementNS(
+              WORD_NS,
+              "w:p"
+            );
+
+        cell.appendChild(paragraph);
       }
 
-      run.appendChild(text);
-      paragraph.appendChild(run);
+
+      /*
+       * Where possible, use an existing run.
+       */
+
+      let run = null;
+
+      const runs =
+        paragraph
+          .getElementsByTagNameNS(
+            WORD_NS,
+            "r"
+          );
+
+      if (runs.length > 0) {
+
+        run = runs[0];
+
+      }
+      else {
+
+        run =
+          cell.ownerDocument
+            .createElementNS(
+              WORD_NS,
+              "w:r"
+            );
+
+        paragraph.appendChild(run);
+      }
+
+
+      const textElement =
+        cell.ownerDocument
+          .createElementNS(
+            WORD_NS,
+            "w:t"
+          );
+
+      textElement.textContent =
+        textValue;
+
+      run.appendChild(textElement);
 
       return true;
     }
 
 
-    function shouldPreserveTargetVerdict(targetVerdict) {
-      const text =
-        normalizeText(targetVerdict);
+    function preserveVerdict(value) {
 
-      return text === "-" ||
-             text === "–" ||
-             text === "—";
+      const text =
+        cleanText(value);
+
+      return (
+        text === "-" ||
+        text === "–" ||
+        text === "—"
+      );
     }
 
 
-    async function loadWordDocument(file) {
-      const fileBuffer =
-        await file.arrayBuffer();
+    async function openDocx(file) {
 
-      const zip =
-        await JSZip.loadAsync(fileBuffer);
-
-      const documentFile =
-        zip.file("word/document.xml");
-
-      if (!documentFile) {
+      if (
+        typeof JSZip === "undefined"
+      ) {
         throw new Error(
-          "The selected file does not contain word/document.xml."
+          "JSZip library did not load. Check the internet connection and reload the webpage."
         );
       }
 
-      const xmlText =
-        await documentFile.async("string");
+
+      const buffer =
+        await file.arrayBuffer();
+
+
+      const zip =
+        await JSZip.loadAsync(
+          buffer
+        );
+
+
+      const documentEntry =
+        zip.file(
+          "word/document.xml"
+        );
+
+
+      if (!documentEntry) {
+
+        throw new Error(
+          "word/document.xml was not found. Please select a valid DOCX file."
+        );
+      }
+
+
+      const documentText =
+        await documentEntry.async(
+          "string"
+        );
+
 
       const parser =
         new DOMParser();
 
-      const xmlDocument =
+
+      const xml =
         parser.parseFromString(
-          xmlText,
+          documentText,
           "application/xml"
         );
 
-      const parserError =
-        xmlDocument.getElementsByTagName("parsererror");
 
-      if (parserError.length > 0) {
+      const parserErrors =
+        xml.getElementsByTagName(
+          "parsererror"
+        );
+
+
+      if (parserErrors.length > 0) {
+
         throw new Error(
-          "The Word document XML could not be read."
+          "The internal Word XML could not be read."
         );
       }
 
+
       return {
         zip: zip,
-        xmlDocument: xmlDocument
+        xml: xml
       };
-    }
-
-
-    function downloadFile(blob, fileName) {
-      const objectUrl =
-        URL.createObjectURL(blob);
-
-      const link =
-        document.createElement("a");
-
-      link.href = objectUrl;
-      link.download = fileName;
-
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      URL.revokeObjectURL(objectUrl);
     }
 
 
@@ -544,212 +706,432 @@
       "click",
       async function () {
 
+        completedBlob = null;
+        completedFileName = "";
+
+        downloadButton.style.display =
+          "none";
+
+
         const blankFile =
-          blankFileInput.files[0];
+          blankInput.files[0];
 
         const filledFile =
-          filledFileInput.files[0];
+          filledInput.files[0];
 
-        if (!blankFile || !filledFile) {
-          showStatus(
-            "Please select both the blank DOCX and the filled DOCX.",
-            "error"
-          );
-          return;
-        }
 
         if (
-          !blankFile.name.toLowerCase().endsWith(".docx") ||
-          !filledFile.name.toLowerCase().endsWith(".docx")
+          !blankFile ||
+          !filledFile
         ) {
+
           showStatus(
-            "Only .docx Word documents are supported.",
+            "Please select both Word documents before starting the transfer.",
             "error"
           );
+
           return;
         }
 
-        transferButton.disabled = true;
+
+        if (
+          !blankFile.name
+            .toLowerCase()
+            .endsWith(".docx") ||
+          !filledFile.name
+            .toLowerCase()
+            .endsWith(".docx")
+        ) {
+
+          showStatus(
+            "Version 3 supports DOCX files only.",
+            "error"
+          );
+
+          return;
+        }
+
+
+        transferButton.disabled =
+          true;
+
 
         showStatus(
-          "Reading the two Word documents...",
+          "Reading Word documents...",
           "info"
         );
 
+
         try {
+
           const blankDocument =
-            await loadWordDocument(blankFile);
+            await openDocx(
+              blankFile
+            );
+
 
           const filledDocument =
-            await loadWordDocument(filledFile);
+            await openDocx(
+              filledFile
+            );
+
 
           const blankRows =
-            extractRows(blankDocument.xmlDocument);
+            extractClauseRows(
+              blankDocument.xml
+            );
+
 
           const filledRows =
-            extractRows(filledDocument.xmlDocument);
+            extractClauseRows(
+              filledDocument.xml
+            );
 
-          if (blankRows.length === 0) {
+
+          if (
+            blankRows.length === 0
+          ) {
+
             throw new Error(
-              "No clause rows were found in the blank document."
+              "No Clause rows were detected in the blank document."
             );
           }
 
-          if (filledRows.length === 0) {
+
+          if (
+            filledRows.length === 0
+          ) {
+
             throw new Error(
-              "No clause rows were found in the filled document."
+              "No Clause rows were detected in the filled document."
             );
           }
 
-          const filledByClause =
+
+          /*
+           * Build lookup from the filled document.
+           */
+
+          const sourceMap =
             new Map();
 
-          for (const row of filledRows) {
-            filledByClause.set(row.clause, row);
+
+          for (
+            const sourceRow of filledRows
+          ) {
+
+            sourceMap.set(
+              sourceRow.clause,
+              sourceRow
+            );
           }
 
-          let matchedClauses = 0;
-          let resultValuesCopied = 0;
-          let verdictValuesCopied = 0;
-          let preservedVerdicts = 0;
 
-          const unmatchedClauses = [];
+          let matched = 0;
 
-          for (const targetRow of blankRows) {
+          let resultCopied = 0;
+
+          let verdictCopied = 0;
+
+          let verdictPreserved = 0;
+
+          let mergedResultsSkipped = 0;
+
+          const unmatched = [];
+
+
+          /*
+           * Process the blank document.
+           */
+
+          for (
+            const targetRow of blankRows
+          ) {
+
             const sourceRow =
-              filledByClause.get(targetRow.clause);
+              sourceMap.get(
+                targetRow.clause
+              );
+
 
             if (!sourceRow) {
-              unmatchedClauses.push(targetRow.clause);
+
+              unmatched.push(
+                targetRow.clause
+              );
+
               continue;
             }
 
-            matchedClauses++;
 
-            const targetResultCell =
-              targetRow.resultCell;
+            matched++;
 
-            const targetVerdictCell =
-              targetRow.verdictCell;
 
-            const resultCanBeWritten =
-              targetResultCell &&
-              targetResultCell.startColumn === 2 &&
-              targetResultCell.span === 1;
-
-            const verdictCanBeWritten =
-              targetVerdictCell &&
-              targetVerdictCell.startColumn === 3;
+            /*
+             * RESULT
+             *
+             * Write only when logical column 3
+             * is an independent cell.
+             *
+             * This avoids modifying a Requirement
+             * cell that spans into Result.
+             */
 
             if (
-              resultCanBeWritten &&
-              sourceRow.result !== ""
+              sourceRow.result !== "" &&
+              targetRow.resultCell
             ) {
-              setCellText(
-                targetResultCell.cell,
-                sourceRow.result
-              );
 
-              resultValuesCopied++;
+              if (
+                targetRow.resultCell.start === 2 &&
+                targetRow.resultCell.span === 1
+              ) {
+
+                writeTextToCell(
+                  targetRow.resultCell.cell,
+                  sourceRow.result
+                );
+
+                resultCopied++;
+
+              }
+              else {
+
+                mergedResultsSkipped++;
+              }
             }
 
+
+            /*
+             * VERDICT
+             */
+
             if (
-              verdictCanBeWritten &&
-              sourceRow.verdict !== ""
+              sourceRow.verdict !== "" &&
+              targetRow.verdictCell
             ) {
+
+              const currentVerdict =
+                getCellText(
+                  targetRow.verdictCell.cell
+                );
+
+
               if (
-                shouldPreserveTargetVerdict(
-                  targetRow.verdict
+                preserveVerdict(
+                  currentVerdict
                 )
               ) {
-                preservedVerdicts++;
-              } else {
-                setCellText(
-                  targetVerdictCell.cell,
+
+                verdictPreserved++;
+
+              }
+              else {
+
+                writeTextToCell(
+                  targetRow.verdictCell.cell,
                   sourceRow.verdict
                 );
 
-                verdictValuesCopied++;
+                verdictCopied++;
               }
             }
           }
 
+
+          /*
+           * Convert modified XML back to text.
+           */
+
           const serializer =
             new XMLSerializer();
 
-          const updatedXml =
+
+          const newDocumentXml =
             serializer.serializeToString(
-              blankDocument.xmlDocument
+              blankDocument.xml
             );
+
 
           blankDocument.zip.file(
             "word/document.xml",
-            updatedXml
+            newDocumentXml
           );
 
+
           showStatus(
-            "Creating the completed Word document...",
+            "Creating completed Word document...",
             "info"
           );
 
-          const completedDocument =
+
+          completedBlob =
             await blankDocument.zip.generateAsync({
+
               type: "blob",
+
               mimeType:
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              compression: "DEFLATE",
+
+              compression:
+                "DEFLATE",
+
               compressionOptions: {
                 level: 6
               }
             });
 
-          const originalName =
-            blankFile.name.replace(/\.docx$/i, "");
 
-          const outputName =
-            originalName + "_completed.docx";
+          const baseName =
+            blankFile.name.replace(
+              /\.docx$/i,
+              ""
+            );
 
-          downloadFile(
-            completedDocument,
-            outputName
-          );
 
-          let summary =
+          completedFileName =
+            baseName +
+            "_completed_V3.docx";
+
+
+          let report =
             "Transfer completed successfully.\n\n" +
-            "Matched clauses: " + matchedClauses + "\n" +
-            "Result values copied: " + resultValuesCopied + "\n" +
-            "Verdict values copied: " + verdictValuesCopied + "\n" +
-            "Existing dash verdicts preserved: " +
-            preservedVerdicts;
 
-          if (unmatchedClauses.length > 0) {
-            summary +=
-              "\n\nClauses not found in filled document: " +
-              unmatchedClauses.join(", ");
+            "Blank clause rows detected: " +
+            blankRows.length +
+            "\n" +
+
+            "Filled clause rows detected: " +
+            filledRows.length +
+            "\n" +
+
+            "Matched clauses: " +
+            matched +
+            "\n" +
+
+            "Result values transferred: " +
+            resultCopied +
+            "\n" +
+
+            "Verdict values transferred: " +
+            verdictCopied +
+            "\n" +
+
+            "Existing dash verdicts preserved: " +
+            verdictPreserved +
+            "\n" +
+
+            "Merged Result cells skipped: " +
+            mergedResultsSkipped;
+
+
+          if (
+            unmatched.length > 0
+          ) {
+
+            report +=
+              "\n\nBlank clauses without a matching filled clause:\n" +
+              unmatched.join(", ");
           }
 
-          summary +=
-            "\n\nDownloaded file: " + outputName;
+
+          report +=
+            "\n\nThe completed document is ready. Click the green Download Completed Word File button.";
+
 
           showStatus(
-            summary,
+            report,
             "success"
           );
 
-        } catch (error) {
-          console.error(error);
+
+          downloadButton.style.display =
+            "block";
+
+        }
+        catch (error) {
+
+          console.error(
+            "Version 3 error:",
+            error
+          );
+
 
           showStatus(
-            "Transfer failed: " +
+            "Transfer failed.\n\n" +
             (error.message || String(error)),
             "error"
           );
 
-        } finally {
-          transferButton.disabled = false;
+        }
+        finally {
+
+          transferButton.disabled =
+            false;
         }
       }
     );
+
+
+    downloadButton.addEventListener(
+      "click",
+      function () {
+
+        if (!completedBlob) {
+
+          showStatus(
+            "No completed document is available. Run the transfer first.",
+            "error"
+          );
+
+          return;
+        }
+
+
+        const objectUrl =
+          URL.createObjectURL(
+            completedBlob
+          );
+
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+
+        link.href =
+          objectUrl;
+
+
+        link.download =
+          completedFileName;
+
+
+        document.body.appendChild(
+          link
+        );
+
+
+        link.click();
+
+
+        link.remove();
+
+
+        setTimeout(
+          function () {
+
+            URL.revokeObjectURL(
+              objectUrl
+            );
+
+          },
+          1000
+        );
+      }
+    );
+
   </script>
 
 </body>
