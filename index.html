@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Word Data Transfer Tool - Version 5</title>
+  <title>Word Data Transfer Tool - Version 5.2</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -32,7 +32,7 @@
 <body>
 <main class="container">
   <h1>Word Data Transfer Tool</h1>
-  <div class="version">Version 5 - marker-scoped table processing</div>
+  <div class="version">Version 5.2 - blank-document authority</div>
 
   <p>Transfers Result - Remark and Verdict values only from recognized Clause tables.</p>
 
@@ -60,7 +60,7 @@
 
   <div class="footer">
     Processing is local in the browser. The blank DOCX remains the formatting master.
-    Version 5 fails closed when a relevant source row cannot be matched safely.
+    Version 5.2 treats the blank document as authoritative and fails closed when the filled document deviates from it.
   </div>
 </main>
 
@@ -387,7 +387,7 @@ async function createDifferenceReport(issues, blankName, filledName) {
     </Relationships>`);
 
   const paragraph = text => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
-  let body = paragraph("Word Data Transfer Tool - Version 5 Difference Report");
+  let body = paragraph("Word Data Transfer Tool - Version 5.2 Difference Report");
   body += paragraph("Blank template: " + blankName);
   body += paragraph("Filled document: " + filledName);
   body += paragraph("Generated: " + new Date().toISOString());
@@ -481,36 +481,68 @@ transferButton.addEventListener("click", async () => {
     const sourceMap = new Map(sourceRecords.map(record => [record.key, record]));
     const targetMap = new Map(targetRecords.map(record => [record.key, record]));
 
-    for (const source of sourceRecords) {
-      if (!targetMap.has(source.key)) {
-        const sameClause = targetRecords.find(target => target.clause === source.clause);
+    // Blank-document authority: the blank template defines the permitted structure.
+    // Every blank row is checked against the filled document. The filled document may
+    // supply only Result and Verdict values; it cannot redefine Clause or Requirement.
+    const sourceByClause = new Map();
+    const targetByClause = new Map();
+    for (const record of sourceRecords) {
+      if (!sourceByClause.has(record.clause)) sourceByClause.set(record.clause, []);
+      sourceByClause.get(record.clause).push(record);
+    }
+    for (const record of targetRecords) {
+      if (!targetByClause.has(record.clause)) targetByClause.set(record.clause, []);
+      targetByClause.get(record.clause).push(record);
+    }
+
+    // First validate every authoritative blank row.
+    for (const target of targetRecords) {
+      const exactSource = sourceMap.get(target.key);
+      if (exactSource) continue;
+
+      const sourceRowsForClause = sourceByClause.get(target.clause) || [];
+      if (sourceRowsForClause.length > 0) {
         issues.push({
-          type: sameClause ? "Requirement mismatch" : "Source-only relevant row",
-          key: source.key,
-          detail: sameClause
-            ? `Clause ${source.clause} exists in the blank document, but Requirement differs. Source Requirement: ${source.requirement}; blank Requirement: ${sameClause.requirement}.`
-            : "This marker-scoped source row has no safe Clause + Requirement counterpart in the blank document."
+          type: "Filled-document Requirement deviation",
+          key: "Clause " + target.clause,
+          detail:
+            `The authoritative blank template requires "${target.requirement}". ` +
+            `The filled document contains "${sourceRowsForClause.map(item => item.requirement).join(" | ")}" for the same Clause.`
+        });
+      } else {
+        issues.push({
+          type: "Missing filled data for authoritative blank row",
+          key: target.key,
+          detail:
+            `The authoritative blank row Clause ${target.clause}, Requirement "${target.requirement}" ` +
+            `has no corresponding row in the filled document. The blank row remains unchanged.`
         });
       }
     }
 
-    // Only rows inside eligible blank tables are considered. Unrelated blank tables are ignored.
-    for (const target of targetRecords) {
-      if (!sourceMap.has(target.key)) {
-        const sameClause = sourceRecords.find(source => source.clause === target.clause);
-        issues.push({
-          type: sameClause ? "Requirement mismatch" : "Target-only relevant row",
-          key: target.key,
-          detail: sameClause
-            ? `Clause ${target.clause} exists in the filled source section, but Requirement differs. Blank Requirement: ${target.requirement}; source Requirement: ${sameClause.requirement}.`
-            : "This row is inside an eligible blank table but has no marker-scoped source counterpart."
-        });
+    // Then detect rows introduced or changed only in the filled document.
+    // These are deviations from the blank template, never defects in the blank file.
+    for (const source of sourceRecords) {
+      if (targetMap.has(source.key)) continue;
+
+      const targetRowsForClause = targetByClause.get(source.clause) || [];
+      if (targetRowsForClause.length > 0) {
+        // Already reported from the authoritative blank perspective above.
+        continue;
       }
+
+      issues.push({
+        type: "Unauthorized filled-document row",
+        key: source.key,
+        detail:
+          `The filled document contains Clause ${source.clause}, Requirement "${source.requirement}", ` +
+          `but the authoritative blank template contains no corresponding permitted row.`
+      });
     }
 
     if (issues.length > 0) {
       reportBlob = await createDifferenceReport(issues, blankFile.name, filledFile.name);
-      reportName = blankFile.name.replace(/\.docx$/i, "") + "_V5_Difference_Report.docx";
+      reportName = blankFile.name.replace(/\.docx$/i, "") + "_V5_2_Difference_Report.docx";
       reportButton.style.display = "block";
       showStatus(
         `Validation found ${issues.length} anomaly/anomalies.\n\n` +
@@ -568,7 +600,7 @@ transferButton.addEventListener("click", async () => {
       compressionOptions: { level: 6 }
     });
 
-    completedName = blankFile.name.replace(/\.docx$/i, "") + "_completed_V5.docx";
+    completedName = blankFile.name.replace(/\.docx$/i, "") + "_completed_V5_2.docx";
     downloadButton.style.display = "block";
 
     showStatus(
@@ -587,8 +619,8 @@ transferButton.addEventListener("click", async () => {
       "success"
     );
   } catch (error) {
-    console.error("Version 5 error:", error);
-    showStatus("Version 5 failed:\n\n" + (error.message || String(error)), "error");
+    console.error("Version 5.2 error:", error);
+    showStatus("Version 5.2 failed:\n\n" + (error.message || String(error)), "error");
   } finally {
     transferButton.disabled = false;
   }
