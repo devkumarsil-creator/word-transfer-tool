@@ -1,74 +1,606 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Word Data Transfer Tool - Version 4.1 Corrected</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;padding:28px;font-family:Arial,sans-serif;background:#f3f6fa;color:#172033}.container{max-width:920px;margin:auto;background:#fff;padding:36px;border-radius:14px;box-shadow:0 5px 24px #0002}h1{margin:0;color:#06477f}.version{color:#64748b;margin:8px 0 22px}.notice,.box,#status{padding:18px;border-radius:9px;margin-top:18px}.notice{background:#edf6ff;border-left:5px solid #2563eb}.box{border:1px solid #cbd5e1;background:#fafcff}.box h2{font-size:19px;margin-top:0}input{width:100%}.btn{width:100%;border:0;border-radius:9px;padding:15px;margin-top:18px;color:#fff;font-size:17px;font-weight:700;cursor:pointer}.primary{background:#1473b9}.download{background:#16803c;display:none}.report{background:#a16207;display:none}.btn:disabled{background:#94a3b8}.info{display:block;background:#eff6ff;border:1px solid #93c5fd}.success{display:block;background:#ecfdf3;border:1px solid #86efac}.warning{display:block;background:#fffbeb;border:1px solid #fcd34d}.error{display:block;background:#fff1f2;border:1px solid #fda4af}#status{display:none;white-space:pre-line;line-height:1.6}.footer{margin-top:24px;color:#64748b;font-size:13px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Data Transfer Tool - Version 5</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; font-family: Arial, sans-serif; background: #f3f6fa; color: #172033; }
+    .container { max-width: 940px; margin: auto; background: #fff; padding: 36px; border-radius: 14px; box-shadow: 0 5px 24px #0002; }
+    h1 { margin: 0; color: #06477f; }
+    .version { margin: 8px 0 22px; color: #64748b; }
+    .notice, .box, #status { margin-top: 18px; padding: 18px; border-radius: 9px; }
+    .notice { background: #edf6ff; border-left: 5px solid #2563eb; line-height: 1.55; }
+    .box { border: 1px solid #cbd5e1; background: #fafcff; }
+    .box h2 { margin-top: 0; font-size: 19px; }
+    input { width: 100%; }
+    .btn { width: 100%; border: 0; border-radius: 9px; padding: 15px; margin-top: 18px; color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; }
+    .primary { background: #1473b9; }
+    .download { background: #16803c; display: none; }
+    .report { background: #a16207; display: none; }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    #status { display: none; white-space: pre-line; line-height: 1.6; }
+    .info { display: block !important; background: #eff6ff; border: 1px solid #93c5fd; }
+    .success { display: block !important; background: #ecfdf3; border: 1px solid #86efac; }
+    .warning { display: block !important; background: #fffbeb; border: 1px solid #fcd34d; }
+    .error { display: block !important; background: #fff1f2; border: 1px solid #fda4af; }
+    .footer { margin-top: 24px; color: #64748b; font-size: 13px; line-height: 1.5; }
+  </style>
 </head>
-<body><main class="container">
-<h1>Word Data Transfer Tool</h1><div class="version">Version 4.1 - corrected strict validation</div>
-<p>Transfers Result and Verdict values only after safe row correspondence is established.</p>
-<div class="notice"><strong>Safety rule:</strong> rows are paired only when their Requirement text matches exactly. Their Clause cells must then be exactly equal, including both being blank for continuation rows. Any anomaly is blocked and recorded in a separate DOCX difference report.</div>
-<div class="box"><h2>1. Select Blank Word Template</h2><input type="file" id="blankFile" accept=".docx"></div>
-<div class="box"><h2>2. Select Filled Word Document</h2><input type="file" id="filledFile" accept=".docx"></div>
-<button id="transferButton" class="btn primary">Validate and Transfer Data</button>
-<button id="downloadButton" class="btn download">Download Completed Word File</button>
-<button id="reportButton" class="btn report">Download Difference Report</button>
-<div id="status" role="status" aria-live="polite"></div>
-<div class="footer">Files are processed locally in the browser. Version 4 uses the blank document as the formatting master.</div>
+<body>
+<main class="container">
+  <h1>Word Data Transfer Tool</h1>
+  <div class="version">Version 5 - marker-scoped table processing</div>
+
+  <p>Transfers Result - Remark and Verdict values only from recognized Clause tables.</p>
+
+  <div class="notice">
+    <strong>Version 5 scope:</strong> the filled document is ignored until a table header contains
+    Clause, Requirement + Test, Result - Remark, and Verdict. Unrelated content and unrelated
+    tables before or after the recognized section are ignored. Hidden brace text such as {67}
+    is ignored during matching.
+  </div>
+
+  <div class="box">
+    <h2>1. Select Blank Word Template</h2>
+    <input type="file" id="blankFile" accept=".docx">
+  </div>
+
+  <div class="box">
+    <h2>2. Select Filled Word Document</h2>
+    <input type="file" id="filledFile" accept=".docx">
+  </div>
+
+  <button id="transferButton" class="btn primary">Validate and Transfer Data</button>
+  <button id="downloadButton" class="btn download">Download Completed Word File</button>
+  <button id="reportButton" class="btn report">Download Difference Report</button>
+  <div id="status" role="status" aria-live="polite"></div>
+
+  <div class="footer">
+    Processing is local in the browser. The blank DOCX remains the formatting master.
+    Version 5 fails closed when a relevant source row cannot be matched safely.
+  </div>
 </main>
+
 <script>
-const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-const $=id=>document.getElementById(id), blankInput=$("blankFile"),filledInput=$("filledFile"),transferButton=$("transferButton"),downloadButton=$("downloadButton"),reportButton=$("reportButton"),statusBox=$("status");
-let completedBlob=null,completedName="",reportBlob=null,reportName="";
-function status(msg,type){statusBox.textContent=msg;statusBox.className=type;}
-function clean(s){return String(s||"").replace(/\u00a0/g," ").replace(/\s+/g," ").trim()}
-function clauseClean(s){return clean(s).replace(/\{[^}]*\}/g,"").replace(/\s+/g,"").replace(/[.:;]+$/g,"")}
-function clauseLike(s){return /^[A-Za-z]?\d+(?:[.\-]\d+)*[A-Za-z]?$/.test(clauseClean(s))}
-function cellText(tc){return clean(Array.from(tc.getElementsByTagNameNS(W,"t")).map(n=>n.textContent||"").join(""))}
-function gridSpan(tc){const n=tc.getElementsByTagNameNS(W,"gridSpan")[0];if(!n)return 1;const v=n.getAttributeNS(W,"val")||n.getAttribute("w:val")||n.getAttribute("val");return Math.max(1,parseInt(v,10)||1)}
-function logicalCells(tr){let col=0;return Array.from(tr.children).filter(x=>x.namespaceURI===W&&x.localName==="tc").map(tc=>{const o={cell:tc,start:col,span:gridSpan(tc),text:cellText(tc)};col+=o.span;return o})}
-function cover(cells,col){return cells.find(x=>x.start<=col&&col<x.start+x.span)}
-function isHeader(cells){return clean((cover(cells,0)||{}).text).toLowerCase()==="clause"}
-function collectRows(xml){const out=[];let sequence=0;
- for(const tr of Array.from(xml.getElementsByTagNameNS(W,"tr"))){const cells=logicalCells(tr);if(!cells.length||isHeader(cells))continue;const c0=cover(cells,0),req=cover(cells,1),res=cover(cells,2),ver=cover(cells,3);const rawClause=clean(c0?c0.text:"");const requirement=clean(req?req.text:"");
-  if(requirement==="")continue;
-  const explicit=clauseLike(rawClause);
-  out.push({kind:explicit?"explicit":"continuation",clause:explicit?clauseClean(rawClause):"",rawClause:rawClause,requirement:requirement,requirementKey:requirement.toLocaleLowerCase(),cells,resultCell:res,verdictCell:ver,result:res?clean(res.text):"",verdict:ver?clean(ver.text):"",sequence:sequence++});
- }
- return out}
-function setText(tc,value){if(!tc)return false;const ts=Array.from(tc.getElementsByTagNameNS(W,"t"));if(ts.length){ts[0].textContent=clean(value);for(let i=1;i<ts.length;i++)ts[i].textContent="";return true}let p=Array.from(tc.children).find(x=>x.namespaceURI===W&&x.localName==="p");if(!p){p=tc.ownerDocument.createElementNS(W,"w:p");tc.appendChild(p)}let r=p.getElementsByTagNameNS(W,"r")[0];if(!r){r=tc.ownerDocument.createElementNS(W,"w:r");p.appendChild(r)}const t=tc.ownerDocument.createElementNS(W,"w:t");t.textContent=clean(value);r.appendChild(t);return true}
-function preserveDash(s){return ["-","–","—"].includes(clean(s))}
-async function openDocx(file){if(typeof JSZip==="undefined")throw new Error("JSZip did not load. Reload while connected to the internet.");const zip=await JSZip.loadAsync(await file.arrayBuffer());const entry=zip.file("word/document.xml");if(!entry)throw new Error("Invalid DOCX: word/document.xml not found.");const xml=new DOMParser().parseFromString(await entry.async("string"),"application/xml");if(xml.getElementsByTagName("parsererror").length)throw new Error("Word XML could not be parsed.");return {zip,xml}}
-function duplicateRequirements(rows){const seen=new Set(),dup=new Set();for(const r of rows){if(seen.has(r.requirementKey))dup.add(r.requirementKey);seen.add(r.requirementKey)}return dup}
-function issue(type,key,target,source,detail){return {type,key,targetClause:target?target.clause:"",sourceClause:source?source.clause:"",targetRequirement:target?target.requirement:"",sourceRequirement:source?source.requirement:"",detail}}
-function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
-async function makeReport(issues,blankName,filledName){const zip=new JSZip();const now=new Date().toISOString();
- zip.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
- zip.folder("_rels").file(".rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
- const p=t=>`<w:p><w:r><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`;let body=p("Word Data Transfer Tool - Version 4.1 Difference Report")+p("Blank template: "+blankName)+p("Filled document: "+filledName)+p("Generated: "+now)+p("Anomalies found: "+issues.length)+p("");
- issues.forEach((x,i)=>{body+=p(`${i+1}. ${x.type} | ${x.key}`)+p("Detail: "+x.detail)+p("Blank clause: "+(x.targetClause||"[blank/not found]"))+p("Filled clause: "+(x.sourceClause||"[blank/not found]"))+p("Blank requirement: "+(x.targetRequirement||"[none]"))+p("Filled requirement: "+(x.sourceRequirement||"[none]"))+p("")});
- zip.folder("word").file("document.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W}"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>`);
- return zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",compression:"DEFLATE"})}
-function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
-transferButton.addEventListener("click",async()=>{completedBlob=reportBlob=null;downloadButton.style.display=reportButton.style.display="none";const bf=blankInput.files[0],ff=filledInput.files[0];if(!bf||!ff){status("Select both DOCX files.","error");return}transferButton.disabled=true;status("Validating document structures...","info");
- try{const b=await openDocx(bf),f=await openDocx(ff),br=collectRows(b.xml),fr=collectRows(f.xml),bm=new Map(br.map(r=>[r.requirementKey,r])),fm=new Map(fr.map(r=>[r.requirementKey,r])),issues=[];
-  for(const k of duplicateRequirements(br))issues.push(issue("Duplicate Requirement in blank","R:"+k,bm.get(k),null,"Requirement text is not unique in the blank document, so safe pairing is impossible."));
-  for(const k of duplicateRequirements(fr))issues.push(issue("Duplicate Requirement in filled","R:"+k,null,fm.get(k),"Requirement text is not unique in the filled document, so safe pairing is impossible."));
-  for(const r of br){const rowKey="R:"+r.requirementKey,s=fm.get(r.requirementKey);if(!s){issues.push(issue("Missing source row",rowKey,r,null,"No row with exactly matching Requirement text exists in the filled document."));continue}
-    if(r.clause!==s.clause){issues.push(issue("Clause mismatch",rowKey,r,s,`Requirement matches, but Clause differs. Blank has ${r.clause||"[blank]"}; filled has ${s.clause||"[blank]"}.`));}
-    if(r.kind!==s.kind){issues.push(issue("Row type mismatch",rowKey,r,s,"One document treats this row as an explicit clause and the other treats it as a blank continuation row."));}
+const WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const $ = id => document.getElementById(id);
+const blankInput = $("blankFile");
+const filledInput = $("filledFile");
+const transferButton = $("transferButton");
+const downloadButton = $("downloadButton");
+const reportButton = $("reportButton");
+const statusBox = $("status");
+
+let completedBlob = null;
+let completedName = "";
+let reportBlob = null;
+let reportName = "";
+
+function showStatus(message, type) {
+  statusBox.textContent = message;
+  statusBox.className = type;
+}
+
+function cleanText(value) {
+  return String(value || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function removeBraceText(value) {
+  return cleanText(value).replace(/\{[^}]*\}/g, "").replace(/\s+/g, " ").trim();
+}
+
+function normalizeHeader(value) {
+  return removeBraceText(value)
+    .toLowerCase()
+    .replace(/[–—−]/g, "-")
+    .replace(/\s*\+\s*/g, "+")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/[^a-z0-9+\-]/g, "");
+}
+
+function normalizeClause(value) {
+  return removeBraceText(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[.:;]+$/g, "")
+    .trim();
+}
+
+function normalizeRequirement(value) {
+  return removeBraceText(value)
+    .toLowerCase()
+    .replace(/\s*:\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikeClause(value) {
+  const clause = normalizeClause(value);
+  return /^\d+(?:\.\d+)*(?:\s*[a-z]+\)?)?$/.test(clause);
+}
+
+function cellText(cell) {
+  if (!cell) return "";
+  const nodes = Array.from(cell.getElementsByTagNameNS(WORD_NS, "t"));
+  return cleanText(nodes.map(node => node.textContent || "").join(""));
+}
+
+function gridSpan(cell) {
+  const node = cell.getElementsByTagNameNS(WORD_NS, "gridSpan")[0];
+  if (!node) return 1;
+  const raw = node.getAttributeNS(WORD_NS, "val") || node.getAttribute("w:val") || node.getAttribute("val");
+  return Math.max(1, parseInt(raw, 10) || 1);
+}
+
+function logicalCells(row) {
+  let column = 0;
+  return Array.from(row.children)
+    .filter(element => element.namespaceURI === WORD_NS && element.localName === "tc")
+    .map(cell => {
+      const item = { cell, start: column, span: gridSpan(cell), text: cellText(cell) };
+      column += item.span;
+      return item;
+    });
+}
+
+function coveringCell(cells, column) {
+  return cells.find(item => item.start <= column && column < item.start + item.span);
+}
+
+function tableRows(table) {
+  return Array.from(table.children).filter(
+    element => element.namespaceURI === WORD_NS && element.localName === "tr"
+  );
+}
+
+function tableLogicalWidth(table) {
+  let maximum = 0;
+  for (const row of tableRows(table)) {
+    const cells = logicalCells(row);
+    const width = cells.reduce((sum, item) => sum + item.span, 0);
+    maximum = Math.max(maximum, width);
   }
-  for(const s of fr)if(!bm.has(s.requirementKey))issues.push(issue("Source-only row","R:"+s.requirementKey,null,s,"The filled document contains a Requirement row that has no exact counterpart in the blank document."));
-  const blocked=new Set(issues.map(x=>x.key));let matched=0,resultCopied=0,verdictCopied=0,dashPreserved=0,mergedSkipped=0;
-  for(const r of br){const rowKey="R:"+r.requirementKey,s=fm.get(r.requirementKey);if(!s||blocked.has(rowKey))continue;matched++;if(s.result!==""&&r.resultCell){if(r.resultCell.start===2&&r.resultCell.span===1){setText(r.resultCell.cell,s.result);resultCopied++}else mergedSkipped++}if(s.verdict!==""&&r.verdictCell){const current=cellText(r.verdictCell.cell);if(preserveDash(current))dashPreserved++;else{setText(r.verdictCell.cell,s.verdict);verdictCopied++}}}
-  if(issues.length){reportBlob=await makeReport(issues,bf.name,ff.name);reportName=bf.name.replace(/\.docx$/i,"")+"_V4_1_Difference_Report.docx";reportButton.style.display="block";status(`Validation found ${issues.length} anomaly/anomalies.\n\nNo completed production document was generated.\nSafe matched rows identified: ${matched}\n\nDownload the Difference Report for details.`,"warning");return}
-  b.zip.file("word/document.xml",new XMLSerializer().serializeToString(b.xml));completedBlob=await b.zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",compression:"DEFLATE",compressionOptions:{level:6}});completedName=bf.name.replace(/\.docx$/i,"")+"_completed_V4_1.docx";downloadButton.style.display="block";status(`Validation passed with no anomalies.\n\nBlank logical rows: ${br.length}\nFilled logical rows: ${fr.length}\nSafely matched rows: ${matched}\nResult values transferred: ${resultCopied}\nVerdict values transferred: ${verdictCopied}\nExisting dash verdicts preserved: ${dashPreserved}\nMerged Result cells skipped: ${mergedSkipped}\n\nThe completed document is ready.`,"success");
- }catch(e){console.error(e);status("Version 4.1 failed:\n\n"+(e.message||String(e)),"error")}finally{transferButton.disabled=false}});
-downloadButton.addEventListener("click",()=>completedBlob?download(completedBlob,completedName):status("Run validation and transfer first.","error"));
-reportButton.addEventListener("click",()=>reportBlob?download(reportBlob,reportName):status("No difference report is available.","error"));
-</script></body></html>
+  return maximum;
+}
+
+function headerMapping(row) {
+  const cells = logicalCells(row);
+  const labels = [];
+  for (let column = 0; column < 4; column++) {
+    const item = coveringCell(cells, column);
+    labels.push(normalizeHeader(item ? item.text : ""));
+  }
+
+  const clauseOkay = labels[0] === "clause";
+  const requirementOkay = labels[1] === "requirement+test";
+  const resultOkay = labels[2] === "result-remark";
+  const verdictOkay = labels[3] === "verdict";
+
+  if (clauseOkay && requirementOkay && resultOkay && verdictOkay) {
+    return { clause: 0, requirement: 1, result: 2, verdict: 3 };
+  }
+
+  // Three-logical-column header: the middle header may contain both labels.
+  const physical = cells.map(item => normalizeHeader(item.text));
+  if (
+    physical.length === 3 &&
+    physical[0] === "clause" &&
+    physical[1].includes("requirement+test") &&
+    physical[1].includes("result-remark") &&
+    physical[2] === "verdict"
+  ) {
+    return { clause: 0, requirement: 1, result: null, verdict: 2 };
+  }
+
+  return null;
+}
+
+function findHeaderRow(table) {
+  const rows = tableRows(table);
+  for (let index = 0; index < rows.length; index++) {
+    const mapping = headerMapping(rows[index]);
+    if (mapping) return { index, mapping };
+  }
+  return null;
+}
+
+function extractSourceSections(xml) {
+  const tables = Array.from(xml.getElementsByTagNameNS(WORD_NS, "tbl"));
+  const sections = [];
+
+  tables.forEach((table, tableIndex) => {
+    const header = findHeaderRow(table);
+    if (!header) return;
+
+    const rows = tableRows(table);
+    const records = [];
+
+    for (let rowIndex = header.index + 1; rowIndex < rows.length; rowIndex++) {
+      const cells = logicalCells(rows[rowIndex]);
+      const clauseCell = coveringCell(cells, 0);
+      const requirementCell = coveringCell(cells, 1);
+      const resultCell = coveringCell(cells, 2);
+      const verdictCell = coveringCell(cells, 3);
+      const clause = normalizeClause(clauseCell ? clauseCell.text : "");
+      const requirement = normalizeRequirement(requirementCell ? requirementCell.text : "");
+
+      if (!looksLikeClause(clause) || requirement === "") continue;
+
+      records.push({
+        tableIndex,
+        rowIndex,
+        clause,
+        requirement,
+        key: clause + "|" + requirement,
+        result: resultCell ? cleanText(resultCell.text) : "",
+        verdict: verdictCell ? cleanText(verdictCell.text) : ""
+      });
+    }
+
+    sections.push({ tableIndex, records });
+  });
+
+  return { sections, tablesScanned: tables.length };
+}
+
+function extractTargetCandidates(xml, sourceKeySet) {
+  const tables = Array.from(xml.getElementsByTagNameNS(WORD_NS, "tbl"));
+  const candidates = [];
+  let eligibleTables = 0;
+
+  tables.forEach((table, tableIndex) => {
+    const width = tableLogicalWidth(table);
+    if (width !== 3 && width !== 4) return;
+
+    const records = [];
+    let safeIntersections = 0;
+
+    tableRows(table).forEach((row, rowIndex) => {
+      if (headerMapping(row)) return;
+      const cells = logicalCells(row);
+      const clauseCell = coveringCell(cells, 0);
+      const requirementCell = coveringCell(cells, 1);
+      const resultCell = width === 4 ? coveringCell(cells, 2) : null;
+      const verdictCell = width === 4 ? coveringCell(cells, 3) : coveringCell(cells, 2);
+      const clause = normalizeClause(clauseCell ? clauseCell.text : "");
+      const requirement = normalizeRequirement(requirementCell ? requirementCell.text : "");
+
+      if (!looksLikeClause(clause) || requirement === "") return;
+
+      const record = {
+        tableIndex,
+        rowIndex,
+        clause,
+        requirement,
+        key: clause + "|" + requirement,
+        resultCell,
+        verdictCell,
+        result: resultCell ? cleanText(resultCell.text) : "",
+        verdict: verdictCell ? cleanText(verdictCell.text) : "",
+        width
+      };
+
+      if (sourceKeySet.has(record.key)) safeIntersections++;
+      records.push(record);
+    });
+
+    // A blank table is relevant only if at least one Clause + Requirement pair
+    // is confirmed by the marker-scoped source data.
+    if (safeIntersections > 0) {
+      eligibleTables++;
+      candidates.push(...records);
+    }
+  });
+
+  return { candidates, tablesScanned: tables.length, eligibleTables };
+}
+
+function setCellText(cell, value) {
+  if (!cell) return false;
+  const textValue = cleanText(value);
+  const textNodes = Array.from(cell.getElementsByTagNameNS(WORD_NS, "t"));
+
+  if (textNodes.length) {
+    textNodes[0].textContent = textValue;
+    for (let index = 1; index < textNodes.length; index++) textNodes[index].textContent = "";
+    return true;
+  }
+
+  let paragraph = Array.from(cell.children).find(
+    element => element.namespaceURI === WORD_NS && element.localName === "p"
+  );
+  if (!paragraph) {
+    paragraph = cell.ownerDocument.createElementNS(WORD_NS, "w:p");
+    cell.appendChild(paragraph);
+  }
+
+  let run = paragraph.getElementsByTagNameNS(WORD_NS, "r")[0];
+  if (!run) {
+    run = cell.ownerDocument.createElementNS(WORD_NS, "w:r");
+    paragraph.appendChild(run);
+  }
+
+  const text = cell.ownerDocument.createElementNS(WORD_NS, "w:t");
+  text.textContent = textValue;
+  run.appendChild(text);
+  return true;
+}
+
+function preserveTargetVerdict(value) {
+  return ["-", "–", "—"].includes(cleanText(value));
+}
+
+async function openDocx(file) {
+  if (typeof JSZip === "undefined") {
+    throw new Error("JSZip did not load. Reload the page while connected to the internet.");
+  }
+
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const entry = zip.file("word/document.xml");
+  if (!entry) throw new Error("Invalid DOCX: word/document.xml was not found.");
+
+  const xml = new DOMParser().parseFromString(await entry.async("string"), "application/xml");
+  if (xml.getElementsByTagName("parsererror").length) {
+    throw new Error("The internal Word XML could not be parsed.");
+  }
+  return { zip, xml };
+}
+
+function duplicateKeys(records) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const record of records) {
+    if (seen.has(record.key)) duplicates.add(record.key);
+    seen.add(record.key);
+  }
+  return duplicates;
+}
+
+function escapeXml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function createDifferenceReport(issues, blankName, filledName) {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+      <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+      <Default Extension="xml" ContentType="application/xml"/>
+      <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+    </Types>`);
+
+  zip.folder("_rels").file(".rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+    </Relationships>`);
+
+  const paragraph = text => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
+  let body = paragraph("Word Data Transfer Tool - Version 5 Difference Report");
+  body += paragraph("Blank template: " + blankName);
+  body += paragraph("Filled document: " + filledName);
+  body += paragraph("Generated: " + new Date().toISOString());
+  body += paragraph("Anomalies found: " + issues.length);
+  body += paragraph("");
+
+  issues.forEach((item, index) => {
+    body += paragraph(`${index + 1}. ${item.type}`);
+    body += paragraph("Key: " + (item.key || "[none]"));
+    body += paragraph("Detail: " + item.detail);
+    body += paragraph("");
+  });
+
+  zip.folder("word").file("document.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <w:document xmlns:w="${WORD_NS}"><w:body>${body}
+    <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr>
+    </w:body></w:document>`);
+
+  return zip.generateAsync({
+    type: "blob",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    compression: "DEFLATE"
+  });
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+transferButton.addEventListener("click", async () => {
+  completedBlob = null;
+  reportBlob = null;
+  downloadButton.style.display = "none";
+  reportButton.style.display = "none";
+
+  const blankFile = blankInput.files[0];
+  const filledFile = filledInput.files[0];
+
+  if (!blankFile || !filledFile) {
+    showStatus("Select both DOCX files.", "error");
+    return;
+  }
+
+  transferButton.disabled = true;
+  showStatus("Locating marker-scoped source tables and compatible target tables...", "info");
+
+  try {
+    const blankDocument = await openDocx(blankFile);
+    const filledDocument = await openDocx(filledFile);
+
+    const sourceExtraction = extractSourceSections(filledDocument.xml);
+    const sourceRecords = sourceExtraction.sections.flatMap(section => section.records);
+    const sourceKeySet = new Set(sourceRecords.map(record => record.key));
+    const targetExtraction = extractTargetCandidates(blankDocument.xml, sourceKeySet);
+    const targetRecords = targetExtraction.candidates;
+
+    const issues = [];
+
+    if (sourceExtraction.sections.length === 0) {
+      issues.push({
+        type: "Source marker not found",
+        key: "[header]",
+        detail: "No filled-document table contained Clause, Requirement + Test, Result - Remark, and Verdict."
+      });
+    }
+
+    if (sourceRecords.length === 0 && sourceExtraction.sections.length > 0) {
+      issues.push({
+        type: "No source data rows",
+        key: "[source section]",
+        detail: "A marker header was found, but no valid Clause + Requirement rows followed it."
+      });
+    }
+
+    for (const key of duplicateKeys(sourceRecords)) {
+      issues.push({ type: "Duplicate source key", key, detail: "The marker-scoped filled data contains this Clause + Requirement more than once." });
+    }
+
+    for (const key of duplicateKeys(targetRecords)) {
+      issues.push({ type: "Duplicate target key", key, detail: "The eligible blank tables contain this Clause + Requirement more than once." });
+    }
+
+    const sourceMap = new Map(sourceRecords.map(record => [record.key, record]));
+    const targetMap = new Map(targetRecords.map(record => [record.key, record]));
+
+    for (const source of sourceRecords) {
+      if (!targetMap.has(source.key)) {
+        const sameClause = targetRecords.find(target => target.clause === source.clause);
+        issues.push({
+          type: sameClause ? "Requirement mismatch" : "Source-only relevant row",
+          key: source.key,
+          detail: sameClause
+            ? `Clause ${source.clause} exists in the blank document, but Requirement differs. Source Requirement: ${source.requirement}; blank Requirement: ${sameClause.requirement}.`
+            : "This marker-scoped source row has no safe Clause + Requirement counterpart in the blank document."
+        });
+      }
+    }
+
+    // Only rows inside eligible blank tables are considered. Unrelated blank tables are ignored.
+    for (const target of targetRecords) {
+      if (!sourceMap.has(target.key)) {
+        const sameClause = sourceRecords.find(source => source.clause === target.clause);
+        issues.push({
+          type: sameClause ? "Requirement mismatch" : "Target-only relevant row",
+          key: target.key,
+          detail: sameClause
+            ? `Clause ${target.clause} exists in the filled source section, but Requirement differs. Blank Requirement: ${target.requirement}; source Requirement: ${sameClause.requirement}.`
+            : "This row is inside an eligible blank table but has no marker-scoped source counterpart."
+        });
+      }
+    }
+
+    if (issues.length > 0) {
+      reportBlob = await createDifferenceReport(issues, blankFile.name, filledFile.name);
+      reportName = blankFile.name.replace(/\.docx$/i, "") + "_V5_Difference_Report.docx";
+      reportButton.style.display = "block";
+      showStatus(
+        `Validation found ${issues.length} anomaly/anomalies.\n\n` +
+        `Filled tables scanned: ${sourceExtraction.tablesScanned}\n` +
+        `Recognized source marker tables: ${sourceExtraction.sections.length}\n` +
+        `Marker-scoped source rows: ${sourceRecords.length}\n` +
+        `Blank tables scanned: ${targetExtraction.tablesScanned}\n` +
+        `Eligible blank tables: ${targetExtraction.eligibleTables}\n\n` +
+        `No completed production document was generated. Download the Difference Report.`,
+        "warning"
+      );
+      return;
+    }
+
+    let matched = 0;
+    let resultsCopied = 0;
+    let verdictsCopied = 0;
+    let dashesPreserved = 0;
+    let mergedResultsSkipped = 0;
+
+    for (const target of targetRecords) {
+      const source = sourceMap.get(target.key);
+      if (!source) continue;
+      matched++;
+
+      if (source.result !== "") {
+        if (target.resultCell && target.resultCell.start === 2 && target.resultCell.span === 1) {
+          setCellText(target.resultCell.cell, source.result);
+          resultsCopied++;
+        } else {
+          mergedResultsSkipped++;
+        }
+      }
+
+      if (source.verdict !== "" && target.verdictCell) {
+        const current = cellText(target.verdictCell.cell);
+        if (preserveTargetVerdict(current)) {
+          dashesPreserved++;
+        } else {
+          setCellText(target.verdictCell.cell, source.verdict);
+          verdictsCopied++;
+        }
+      }
+    }
+
+    blankDocument.zip.file(
+      "word/document.xml",
+      new XMLSerializer().serializeToString(blankDocument.xml)
+    );
+
+    completedBlob = await blankDocument.zip.generateAsync({
+      type: "blob",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 }
+    });
+
+    completedName = blankFile.name.replace(/\.docx$/i, "") + "_completed_V5.docx";
+    downloadButton.style.display = "block";
+
+    showStatus(
+      `Validation passed with no anomalies.\n\n` +
+      `Filled tables scanned: ${sourceExtraction.tablesScanned}\n` +
+      `Recognized source marker tables: ${sourceExtraction.sections.length}\n` +
+      `Marker-scoped source rows: ${sourceRecords.length}\n` +
+      `Blank tables scanned: ${targetExtraction.tablesScanned}\n` +
+      `Eligible blank tables: ${targetExtraction.eligibleTables}\n` +
+      `Safely matched rows: ${matched}\n` +
+      `Result values transferred: ${resultsCopied}\n` +
+      `Verdict values transferred: ${verdictsCopied}\n` +
+      `Existing dash verdicts preserved: ${dashesPreserved}\n` +
+      `Merged Result cells skipped: ${mergedResultsSkipped}\n\n` +
+      `The completed Word document is ready.`,
+      "success"
+    );
+  } catch (error) {
+    console.error("Version 5 error:", error);
+    showStatus("Version 5 failed:\n\n" + (error.message || String(error)), "error");
+  } finally {
+    transferButton.disabled = false;
+  }
+});
+
+downloadButton.addEventListener("click", () => {
+  if (completedBlob) download(completedBlob, completedName);
+});
+
+reportButton.addEventListener("click", () => {
+  if (reportBlob) download(reportBlob, reportName);
+});
+</script>
+</body>
+</html>
